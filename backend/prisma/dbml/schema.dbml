@@ -1,0 +1,123 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table User {
+  id Int [pk, increment]
+  name String [not null]
+  profileImage String
+  email String [unique, not null]
+  password String [not null]
+  bio String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  posts Post [not null]
+  comments Comment [not null]
+  replies Reply [not null]
+  likes Like [not null]
+  followers Follow [not null]
+  following Follow [not null]
+  shares Share [not null]
+  role String [not null, default: 'user']
+}
+
+Table Post {
+  id Int [pk, increment]
+  content String [not null]
+  imageUrl String
+  createdAt DateTime [default: `now()`, not null]
+  author User [not null]
+  authorId Int [not null]
+  comments Comment [not null]
+  likes Like [not null]
+  shares Share [not null]
+}
+
+Table Comment {
+  id Int [pk, increment]
+  content String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  author User [not null]
+  authorId Int [not null]
+  post Post [not null]
+  postId Int [not null]
+  replies Reply [not null]
+  likes Like [not null]
+}
+
+Table Reply {
+  id Int [pk, increment]
+  content String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  author User [not null]
+  authorId Int [not null]
+  comment Comment [not null]
+  commentId Int [not null]
+  likes Like [not null]
+}
+
+Table Like {
+  id Int [pk, increment]
+  user User [not null]
+  userId Int [not null]
+  post Post
+  postId Int
+  comment Comment
+  commentId Int
+  reply Reply
+  replyId Int
+  createdAt DateTime [default: `now()`, not null]
+
+  indexes {
+    (userId, postId) [unique]
+    (userId, commentId) [unique]
+    (userId, replyId) [unique]
+  }
+}
+
+Table Share {
+  id Int [pk, increment]
+  user User [not null]
+  userId Int [not null]
+  post Post [not null]
+  postId Int [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table Follow {
+  id Int [pk, increment]
+  follower User [not null]
+  followerId Int [not null]
+  following User [not null]
+  followingId Int [not null]
+
+  indexes {
+    (followerId, followingId) [unique]
+  }
+}
+
+Ref: Post.authorId > User.id
+
+Ref: Comment.authorId > User.id
+
+Ref: Comment.postId > Post.id
+
+Ref: Reply.authorId > User.id
+
+Ref: Reply.commentId > Comment.id
+
+Ref: Like.userId > User.id
+
+Ref: Like.postId > Post.id
+
+Ref: Like.commentId > Comment.id
+
+Ref: Like.replyId > Reply.id
+
+Ref: Share.userId > User.id
+
+Ref: Share.postId > Post.id
+
+Ref: Follow.followerId > User.id
+
+Ref: Follow.followingId > User.id

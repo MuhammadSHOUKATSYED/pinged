@@ -19,6 +19,8 @@ Table User {
   following Follow [not null]
   shares Share [not null]
   role String [not null, default: 'user']
+  sentMessages Message [not null]
+  receivedMessages Message [not null]
 }
 
 Table Post {
@@ -96,6 +98,17 @@ Table Follow {
   }
 }
 
+Table Message {
+  id Int [pk, increment]
+  senderId Int [not null]
+  receiverId Int [not null]
+  content String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  readAt DateTime
+  sender User [not null]
+  receiver User [not null]
+}
+
 Ref: Post.authorId > User.id
 
 Ref: Comment.authorId > User.id
@@ -121,3 +134,7 @@ Ref: Share.postId > Post.id
 Ref: Follow.followerId > User.id
 
 Ref: Follow.followingId > User.id
+
+Ref: Message.senderId > User.id
+
+Ref: Message.receiverId > User.id

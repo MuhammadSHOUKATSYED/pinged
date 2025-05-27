@@ -25,6 +25,9 @@ model User {
   following Follow[]  @relation("following")
   shares    Share[]   @relation("UserShares")
   role      String    @default("user")
+
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
 }
 
 model Post {
@@ -104,6 +107,18 @@ model Follow {
   followingId Int
 
   @@unique([followerId, followingId])
+}
+
+model Message {
+  id          Int      @id @default(autoincrement())
+  senderId    Int
+  receiverId  Int
+  content     String
+  createdAt   DateTime @default(now())
+  readAt      DateTime?
+  
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
 }
 
 generator dbml {

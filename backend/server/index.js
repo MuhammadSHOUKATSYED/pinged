@@ -8,7 +8,10 @@ const { Server } = require("socket.io");
 const prisma = require("./prismaClient"); // Your Prisma client instance
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
 app.use(express.json());
 
 // --- Middleware for Express routes ---

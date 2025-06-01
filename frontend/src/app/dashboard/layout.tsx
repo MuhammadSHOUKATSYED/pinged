@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
   FaHome,
   FaUser,
@@ -18,6 +19,15 @@ import {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [showMore, setShowMore] = useState(false);
+  const router = useRouter();
+  
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/login');
+    }
+  }, []);
+  
 
   return (
     <div className="flex min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
@@ -55,7 +65,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div id="more-options" className="ml-8 flex flex-col gap-2 mt-2 text-gray-600 dark:text-gray-400">
                 <SidebarLink href="/dashboard/settings" icon={<FaCog size={20} />} text="Settings" />
                 <SidebarLink href="/dashboard/help" icon={<FaQuestionCircle size={20} />} text="Help" />
-                <SidebarButton icon={<FaSignOutAlt size={20} />} text="Logout" onClick={() => console.log('Logging out...')} />
+                <SidebarButton
+                      icon={<FaSignOutAlt size={20} />}
+                      text="Logout"
+                      onClick={() => {
+                        localStorage.removeItem('token'); // Remove JWT
+                        router.push('/login'); // Redirect to login
+                      }}
+                    />
               </div>
             )}
           </nav>

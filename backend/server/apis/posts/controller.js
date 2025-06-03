@@ -2,10 +2,11 @@ const prisma = require('../../prismaClient');
 
 // Create a Post
 exports.createPost = async (req, res) => {
-  const { content, imageUrl, authorId } = req.body;
+  const { content, imageUrl } = req.body;
+  const authorId = req.user.id; // Use authenticated user
 
-  if (!content || !authorId) {
-    return res.status(400).json({ error: 'content and authorId are required' });
+  if (!content) {
+    return res.status(400).json({ error: 'Content is required' });
   }
 
   try {
@@ -25,20 +26,20 @@ exports.createPost = async (req, res) => {
 
 // Get all posts
 exports.getAllPosts = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const skip = (page - 1) * limit;
+
   try {
     const posts = await prisma.post.findMany({
-      include: {
-        author: true,
-        likes: true,
-        comments: {
-          include: {
-            author: true,
-            replies: {
-              include: { author: true, likes: true },
-            },
-            likes: true,
-          },
+      skip,
+      take: limit,
+      include: { 
+        author: {
+          select: { id: true, name: true, profileImage: true },
         },
+        likes: true,
+        comments: true,
         shares: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -49,6 +50,7 @@ exports.getAllPosts = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 
 // Get post by ID
 exports.getPostById = async (req, res) => {
@@ -87,6 +89,7 @@ exports.getPostById = async (req, res) => {
 // Update a post
 exports.updatePost = async (req, res) => {
   const { id } = req.params;
+  const userId = req.user.id; // From auth middleware
   const { content, imageUrl } = req.body;
 
   if (!content && imageUrl === undefined) {
@@ -94,6 +97,10 @@ exports.updatePost = async (req, res) => {
   }
 
   try {
+    const post = await prisma.post.findUnique({ where: { id: parseInt(id) } });
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+    if (post.authorId !== userId) return res.status(403).json({ error: 'Not authorized' });
+
     const updatedPost = await prisma.post.update({
       where: { id: parseInt(id) },
       data: {
@@ -105,7 +112,7 @@ exports.updatePost = async (req, res) => {
     res.json(updatedPost);
   } catch (error) {
     console.error('Error updating post:', error);
-    res.status(404).json({ error: 'Post not found or update failed' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 

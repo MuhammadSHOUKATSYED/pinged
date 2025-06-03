@@ -32,7 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
       {/* Sidebar */}
-      <aside className="w-72 bg-white dark:bg-black p-6 border-r border-gray-200 dark:border-gray-800 flex flex-col justify-between sticky top-0 h-screen">
+      <aside className="w-72 bg-white dark:bg-black p-6 border-r border-gray-200 dark:border-gray-800 flex flex-col justify-between sticky top-0 h-screen overflow-y-auto">
         <div>
           {/* Logo */}
           <div className="flex items-center gap-3 text-black dark:text-white mb-10">
@@ -78,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
 
           {/* Post Button */}
-          <Link href="/dashboard/newPost" className="block mt-8 mb-30">
+          <Link href="/dashboard/newPost" className="block mt-8 mb-10">
             <button className="w-full bg-black hover:bg-gray-900 text-white py-3 rounded-full font-semibold text-lg transition">
               Post
             </button>

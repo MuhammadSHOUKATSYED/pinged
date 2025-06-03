@@ -44,7 +44,6 @@ Table Comment {
   post Post [not null]
   postId Int [not null]
   replies Reply [not null]
-  likes Like [not null]
 }
 
 Table Reply {
@@ -55,25 +54,18 @@ Table Reply {
   authorId Int [not null]
   comment Comment [not null]
   commentId Int [not null]
-  likes Like [not null]
 }
 
 Table Like {
   id Int [pk, increment]
   user User [not null]
   userId Int [not null]
-  post Post
-  postId Int
-  comment Comment
-  commentId Int
-  reply Reply
-  replyId Int
+  post Post [not null]
+  postId Int [not null]
   createdAt DateTime [default: `now()`, not null]
 
   indexes {
     (userId, postId) [unique]
-    (userId, commentId) [unique]
-    (userId, replyId) [unique]
   }
 }
 
@@ -122,10 +114,6 @@ Ref: Reply.commentId > Comment.id
 Ref: Like.userId > User.id
 
 Ref: Like.postId > Post.id
-
-Ref: Like.commentId > Comment.id
-
-Ref: Like.replyId > Reply.id
 
 Ref: Share.userId > User.id
 

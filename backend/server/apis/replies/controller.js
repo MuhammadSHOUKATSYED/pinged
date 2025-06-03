@@ -33,7 +33,6 @@ exports.getReplies = async (req, res) => {
       where: { commentId: parseInt(commentId) },
       include: {
         author: true,
-        likes: true,
       },
       orderBy: { createdAt: 'asc' },
     });

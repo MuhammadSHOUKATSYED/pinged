@@ -33,8 +33,7 @@ exports.getComments = async (req, res) => {
         author: {
           select: { id: true, name: true, email: true, bio: true },
         },
-        likes: true,
-        replies: true,
+        replies: true, // keep this if you still support replies
       },
     });
     res.json(postComments);

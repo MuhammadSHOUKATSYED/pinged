@@ -24,24 +24,39 @@ exports.createComment = async (req, res) => {
 
 exports.getComments = async (req, res) => {
   const { postId } = req.params;
+  const parsedPostId = parseInt(postId);
+
+  console.log('postId param:', postId, '| parsed:', parsedPostId);
+
+  if (isNaN(parsedPostId)) {
+    return res.status(400).json({ error: 'Invalid postId' });
+  }
 
   try {
     const postComments = await prisma.comment.findMany({
-      where: { postId: parseInt(postId) },
+      where: { postId: parsedPostId },
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
         author: {
-          select: { id: true, name: true, email: true, bio: true },
+          select: {
+            id: true,
+            name: true,
+          },
         },
-        replies: true, // keep this if you still support replies
       },
     });
+
+    console.log(`Fetched ${postComments.length} comments for post ${parsedPostId}`);
     res.json(postComments);
   } catch (error) {
     console.error('Error fetching comments:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 
 exports.updateComment = async (req, res) => {
   const { id } = req.params;

@@ -39,8 +39,11 @@ exports.getAllPosts = async (req, res) => {
           select: { id: true, name: true, profileImage: true },
         },
         likes: true,
-        comments: true,
-        shares: true,
+        comments: {
+          include: {
+            author: true, // ✅ this is important
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -50,7 +53,6 @@ exports.getAllPosts = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
-
 
 // Get post by ID
 exports.getPostById = async (req, res) => {
@@ -116,17 +118,31 @@ exports.updatePost = async (req, res) => {
   }
 };
 
-// Delete a post
 exports.deletePost = async (req, res) => {
   const { id } = req.params;
+  const userId = req.user?.id;
 
   try {
+    const post = await prisma.post.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    if (post.authorId !== userId) {
+      return res.status(403).json({ error: 'Not authorized to delete this post' });
+    }
+
     await prisma.post.delete({
       where: { id: parseInt(id) },
     });
+
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting post:', error);
-    res.status(404).json({ error: 'Post not found or already deleted' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
+

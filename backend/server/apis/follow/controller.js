@@ -40,22 +40,20 @@ exports.followUser = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
-
 exports.unfollowUser = async (req, res) => {
-  const { followerId, followingId } = req.body;
-
-  if (!followerId || !followingId) {
-    return res.status(400).json({ error: 'Both followerId and followingId are required' });
-  }
-
   try {
-    // Check if follow relationship exists
-    const existingFollow = await prisma.follow.findUnique({
+    const followerId = req.user?.id;
+    const followingId = parseInt(req.params.userId); // ensure this matches route param
+
+    if (!followerId || !followingId) {
+      return res.status(400).json({ error: 'Missing follower or following ID' });
+    }
+
+    // Use findFirst to locate the follow relation
+    const existingFollow = await prisma.follow.findFirst({
       where: {
-        followerId_followingId: {
-          followerId: parseInt(followerId),
-          followingId: parseInt(followingId),
-        },
+        followerId,
+        followingId,
       },
     });
 
@@ -63,14 +61,9 @@ exports.unfollowUser = async (req, res) => {
       return res.status(404).json({ error: 'Follow relationship not found' });
     }
 
-    // Delete follow relationship
+    // Delete by ID
     await prisma.follow.delete({
-      where: {
-        followerId_followingId: {
-          followerId: parseInt(followerId),
-          followingId: parseInt(followingId),
-        },
-      },
+      where: { id: existingFollow.id },
     });
 
     res.status(200).json({ message: 'Unfollowed successfully' });
@@ -88,7 +81,9 @@ exports.getFollowers = async (req, res) => {
       where: { followingId: parseInt(userId) },
       include: {
         follower: {
-          select: { id: true, name: true, email: true, bio: true },
+          select: { id: true, name: true, email: true, bio: true,
+            profileImage: true,
+            },
         },
       },
     });
@@ -109,7 +104,9 @@ exports.getFollowing = async (req, res) => {
       where: { followerId: parseInt(userId) },
       include: {
         following: {
-          select: { id: true, name: true, email: true, bio: true },
+          select: { id: true, name: true, email: true, bio: true,
+            profileImage: true,
+           },
         },
       },
     });

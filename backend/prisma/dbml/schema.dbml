@@ -13,11 +13,9 @@ Table User {
   updatedAt DateTime [not null]
   posts Post [not null]
   comments Comment [not null]
-  replies Reply [not null]
   likes Like [not null]
   followers Follow [not null]
   following Follow [not null]
-  shares Share [not null]
   role String [not null, default: 'user']
   sentMessages Message [not null]
   receivedMessages Message [not null]
@@ -32,7 +30,6 @@ Table Post {
   authorId Int [not null]
   comments Comment [not null]
   likes Like [not null]
-  shares Share [not null]
 }
 
 Table Comment {
@@ -43,17 +40,6 @@ Table Comment {
   authorId Int [not null]
   post Post [not null]
   postId Int [not null]
-  replies Reply [not null]
-}
-
-Table Reply {
-  id Int [pk, increment]
-  content String [not null]
-  createdAt DateTime [default: `now()`, not null]
-  author User [not null]
-  authorId Int [not null]
-  comment Comment [not null]
-  commentId Int [not null]
 }
 
 Table Like {
@@ -67,15 +53,6 @@ Table Like {
   indexes {
     (userId, postId) [unique]
   }
-}
-
-Table Share {
-  id Int [pk, increment]
-  user User [not null]
-  userId Int [not null]
-  post Post [not null]
-  postId Int [not null]
-  createdAt DateTime [default: `now()`, not null]
 }
 
 Table Follow {
@@ -103,21 +80,13 @@ Table Message {
 
 Ref: Post.authorId > User.id
 
-Ref: Comment.authorId > User.id
+Ref: Comment.authorId > User.id [delete: Cascade]
 
-Ref: Comment.postId > Post.id
+Ref: Comment.postId > Post.id [delete: Cascade]
 
-Ref: Reply.authorId > User.id
+Ref: Like.userId > User.id [delete: Cascade]
 
-Ref: Reply.commentId > Comment.id
-
-Ref: Like.userId > User.id
-
-Ref: Like.postId > Post.id
-
-Ref: Share.userId > User.id
-
-Ref: Share.postId > Post.id
+Ref: Like.postId > Post.id [delete: Cascade]
 
 Ref: Follow.followerId > User.id
 

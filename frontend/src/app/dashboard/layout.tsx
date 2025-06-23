@@ -12,9 +12,9 @@ import {
   FaUsers,
   FaEllipsisH,
   FaSignOutAlt,
-  FaCog,
   FaQuestionCircle,
   FaBolt,
+  FaImage,
 } from 'react-icons/fa';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -45,6 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <SidebarLink href="/dashboard" icon={<FaHome size={24} />} text="Home" />
             <SidebarLink href="/dashboard/explore" icon={<FaSearch size={24} />} text="Explore" />
             <SidebarLink href="/dashboard/messages" icon={<FaEnvelope size={24} />} text="Messages" />
+            <SidebarLink href="/dashboard/myPosts" icon={<FaImage size={24} />} text="My Posts" />
             <SidebarLink href="/dashboard/profile" icon={<FaUser size={24} />} text="Profile" />
             <SidebarLink href="/dashboard/followers" icon={<FaUserFriends size={24} />} text="Followers" />
             <SidebarLink href="/dashboard/following" icon={<FaUsers size={24} />} text="Following" />
@@ -63,7 +64,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* More Options */}
             {showMore && (
               <div id="more-options" className="ml-8 flex flex-col gap-2 mt-2 text-gray-600 dark:text-gray-400">
-                <SidebarLink href="/dashboard/settings" icon={<FaCog size={20} />} text="Settings" />
                 <SidebarLink href="/dashboard/help" icon={<FaQuestionCircle size={20} />} text="Help" />
                 <SidebarButton
                       icon={<FaSignOutAlt size={20} />}

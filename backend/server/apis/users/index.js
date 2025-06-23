@@ -11,7 +11,7 @@ const {
 } = require('./controller');
 
 // New route to get all users
-router.get('/', authorizeAdmin, getAllUsers);            // GET /api/users
+router.get('/', getAllUsers);            // GET /api/users
 router.post('/', authorizeAdmin, createUser);            // POST /api/users
 router.get('/:id', getUserProfile);      // GET /api/users/:id
 router.put('/:id', updateUserProfile);   // PUT /api/users/:id

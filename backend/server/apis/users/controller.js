@@ -65,8 +65,6 @@ exports.getUserProfile = async (req, res) => {
       include: {
         posts: true,
         comments: true,
-        replies: true,
-        shares: true,
         followers: true,
         following: true,
         likes: true,
@@ -126,25 +124,25 @@ exports.updateUserProfile = async (req, res) => {
   }
 };
 
-// ---------------------------
-// Admin-only: Get All Users
-// ---------------------------
+
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await prisma.user.findMany({
+      where: {
+        role: { not: 'admin' }  // 👈 exclude admins
+      },
       select: {
         id: true,
         name: true,
-        email: true,
-        role: true,
         bio: true,
         profileImage: true,
-        createdAt: true,
+        role: true,
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
+    
 
     res.json(users);
   } catch (error) {

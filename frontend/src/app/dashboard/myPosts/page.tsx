@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { Heart, MessageCircle, Image as ImageIcon } from 'lucide-react';
-import { supabase } from '../../../lib/supabaseClient'; // Adjust path if needed
-import { formatDistanceToNow, format } from 'date-fns';
+import { useEffect, useState } from 'react';
+import { MoreVertical, Pencil, Trash2, ArrowLeft, MessageCircle, Heart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { MoreVertical, Trash2, Pencil, ArrowLeft } from 'lucide-react';
-
-
+import { supabase } from '../../../../lib/supabaseClient';
+import { formatDistanceToNow, format } from 'date-fns';
 
 function getFormattedDate(createdAt: string) {
   const date = new Date(createdAt);
@@ -24,15 +22,40 @@ function getFormattedDate(createdAt: string) {
   }
 }
 
+interface Author {
+  id: number;
+  name: string;
+  profileImage: string;
+}
 
-export default function HomePage() {
-  const [posts, setPosts] = useState([]);
+interface Comment {
+  id: number;
+  content: string;
+}
+
+interface Like {
+  id: number;
+  userId: number;
+}
+
+interface Post {
+  id: number;
+  content: string;
+  imageUrl?: string;
+  createdAt: string;
+  author: Author;
+  likes: Like[];
+  comments: Comment[];
+}
+
+export default function MyPostsPage() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [newPostContent, setNewPostContent] = useState('');
-  const [newPostImage, setNewPostImage] = useState<File | null>(null);
-  const [posting, setPosting] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [activeMenuPostId, setActiveMenuPostId] = useState<number | null>(null);
+  const [editingPostId, setEditingPostId] = useState<number | null>(null);
+  const [editedContent, setEditedContent] = useState<string>('');
+  const [editedImage, setEditedImage] = useState<File | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [commentsByPostId, setCommentsByPostId] = useState<{ [key: number]: any[] }>(() => {
@@ -41,12 +64,127 @@ export default function HomePage() {
   const [commentInputs, setCommentInputs] = useState<{ [key: number]: string }>({});
   const [expandedComments, setExpandedComments] = useState<{ [key: number]: boolean }>({});
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
-const [editedContent, setEditedContent] = useState<string>('');
 const [activeMenuCommentId, setActiveMenuCommentId] = useState<number | null>(null);
 
 
+
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return toast.error('Not authenticated');
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const id = payload.id;
+      setUserId(id);
+      fetchUserPosts(id);
+    } catch (err) {
+      console.error('Invalid token', err);
+      toast.error('Invalid token');
+    }
+  }, []);
+
+  const fetchUserPosts = async (id: number) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/posts`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error('Failed to load posts');
   
-async function handleUpdateComment(commentId: number, postId: number) {
+      const allPosts: Post[] = await res.json();
+      const userPosts = allPosts.filter((post) => post.author.id === id);
+      setPosts(userPosts);
+    } catch (err) {
+      console.error(err);
+      toast.error('Error fetching your posts');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  
+
+  const handleDeletePost = async (postId: number) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error('Failed to delete post');
+
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+      toast.success('Post deleted');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete');
+    }
+  };
+
+  const handleEditPost = async (postId: number) => {
+    if (!editedContent.trim()) return;
+  
+    const token = localStorage.getItem('token');
+    let imageUrl: string | undefined = undefined;
+  
+    try {
+      if (editedImage) {
+        const fileExt = editedImage.name.split('.').pop();
+        const filePath = `post-images/${Date.now()}.${fileExt}`;
+        const { data, error } = await supabase.storage
+          .from('pinged')
+          .upload(filePath, editedImage);
+  
+        if (error) throw error;
+  
+        const { data: publicUrlData } = supabase
+          .storage
+          .from('pinged')
+          .getPublicUrl(filePath);
+  
+        imageUrl = publicUrlData?.publicUrl;
+      }
+  
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/posts/${postId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          content: editedContent,
+          ...(imageUrl && { imageUrl }),
+        }),
+      });
+  
+      if (!res.ok) throw new Error('Failed to update post');
+  
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? { ...p, content: editedContent, imageUrl: imageUrl || p.imageUrl }
+            : p
+        )
+      );
+      setEditingPostId(null);
+      setEditedContent('');
+      setEditedImage(null);
+      toast.success('Post updated');
+    } catch (err) {
+      console.error(err);
+      toast.error('Update failed');
+    }
+  };
+
+  async function handleUpdateComment(commentId: number, postId: number) {
   if (!editedContent.trim()) return;
 
   try {
@@ -160,23 +298,6 @@ async function handleUpdateComment(commentId: number, postId: number) {
     }
   }  
   
-    
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      console.log('Decoded JWT payload:', payload); // optional debug
-      setUserId(payload.id); // ✅ fix here
-    }
-  }, []);
-  
-
-  
-  useEffect(() => {
-    fetchPosts();
-  }, []);
-
-
   const toggleLike = async (postId: number) => {
     const token = localStorage.getItem('token');
   
@@ -222,193 +343,134 @@ async function handleUpdateComment(commentId: number, postId: number) {
     }
   };
   
-  
-  
-  
-  
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setShowModal(false);
-      setSelectedImage(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (showModal) {
-      window.addEventListener('keydown', handleKeyDown);
-    } else {
-      window.removeEventListener('keydown', handleKeyDown);
-    }
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showModal, handleKeyDown]);
-
-  async function fetchPosts() {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/posts/`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-  
-      if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-      const data = await res.json();
-      setPosts(data);
-
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-  
-
-  async function handlePostSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newPostContent.trim() && !newPostImage) return;
-
-    try {
-      setPosting(true);
-      let imageUrl = '';
-
-      if (newPostImage) {
-        const fileExt = newPostImage.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const filePath = `public/${fileName}`;
-
-        const { error } = await supabase.storage
-          .from('pinged')
-          .upload(filePath, newPostImage, {
-            cacheControl: '3600',
-            upsert: false,
-          });
-
-        if (error) throw error;
-
-        const { data: publicUrlData } = supabase.storage
-          .from('pinged')
-          .getPublicUrl(filePath);
-
-        imageUrl = publicUrlData?.publicUrl || '';
-      }
-
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/posts/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ content: newPostContent, imageUrl }),
-      });
-
-      if (!res.ok) throw new Error(`Post failed: ${await res.text()}`);
-      setNewPostContent('');
-      setNewPostImage(null);
-      fetchPosts();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setPosting(false);
-    }
-  }
 
   return (
-    <div className="min-h-screen flex flex-col items-center bg-white dark:bg-black px-4 sm:px-8 py-8">
-      <div className="w-full max-w-2xl">
-        {/* Post Composer */}
-        <form
-          onSubmit={handlePostSubmit}
-          className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4 shadow mb-6"
-        >
-          <textarea
-            value={newPostContent}
-            onChange={(e) => setNewPostContent(e.target.value)}
-            placeholder="What's on your mind?"
-            rows={3}
-            className="w-full resize-none bg-white dark:bg-black text-gray-900 dark:text-white p-3 rounded-xl border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-700"
-          />
+    <div className="max-w-2xl mx-auto py-10 px-4">
+      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-white">
+        My Posts
+      </h1>
 
-          <div className="flex justify-between items-center mt-3">
-            <label className="cursor-pointer flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-blue-600 transition">
-              <ImageIcon size={20} />
-              <span className="text-sm hidden sm:inline">Add Photo</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setNewPostImage(e.target.files[0]);
-                  }
-                }}
-                className="hidden"
-              />
-            </label>
-
-            <button
-              type="submit"
-              disabled={posting}
-              className="bg-black text-white dark:bg-white dark:text-black px-5 py-2 rounded-full hover:opacity-90 transition disabled:opacity-50"
+      {loading ? (
+        <p className="text-center text-gray-500">Loading...</p>
+      ) : posts.length === 0 ? (
+        <p className="text-center text-gray-400">You haven't posted anything yet.</p>
+      ) : (
+        <div className="space-y-4">
+          {posts.map((post) => (
+            <div
+              key={post.id}
+              className="bg-gray-50 dark:bg-gray-900 p-4 border border-gray-200 dark:border-gray-700 rounded-xl relative"
             >
-              {posting ? 'Posting...' : 'Post'}
-            </button>
-          </div>
-
-          {newPostImage && (
-            <div className="mt-3">
-              <img
-                src={URL.createObjectURL(newPostImage)}
-                alt="Preview"
-                className="w-full h-auto max-h-60 object-cover rounded-lg"
-              />
-            </div>
-          )}
-        </form>
-
-        {/* Posts Section */}
-        {loading ? (
-          <p className="text-center text-gray-500 dark:text-gray-400">Loading posts...</p>
-        ) : error ? (
-          <p className="text-center text-red-500">{error}</p>
-        ) : posts.length === 0 ? (
-          <p className="text-center text-gray-500">No posts found.</p>
-        ) : (
-          <div className="space-y-4">
-            {posts.map((post) => (
-              <div
-                key={post.id}
-                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm"
-              >
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                <div className="flex items-center gap-2 mb-1">
-                  {post.author?.profileImage ? (
-                    <img
-                      src={post.author.profileImage}
-                      alt={post.author.name}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white flex items-center justify-center font-semibold">
-                      {post.author?.name?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                  )}
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {post.author?.name || 'Unknown'} · {getFormattedDate(post.createdAt)}
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-2">
+                  <img
+                    src={post.author.profileImage}
+                    alt={post.author.name}
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-white">
+                   {post.author?.name || 'Unknown'} · {getFormattedDate(post.createdAt)}
+                      </p>
                   </div>
                 </div>
+
+                <div className="relative">
+                  <button
+                    onClick={() =>
+                      setActiveMenuPostId(activeMenuPostId === post.id ? null : post.id)
+                    }
+                    className="text-gray-500 hover:text-gray-700 dark:hover:text-white transition"
+                  >
+                    <MoreVertical size={18} />
+                  </button>
+
+                  {activeMenuPostId === post.id && (
+                    <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 z-10">
+                      <button
+                        onClick={() => {
+                          setEditingPostId(post.id);
+                          setEditedContent(post.content);
+                          setActiveMenuPostId(null);
+                        }}
+                        className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-white hover:bg-blue-100 dark:hover:bg-blue-700"
+                      >
+                        <Pencil size={14} className="mr-2" /> Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleDeletePost(post.id);
+                          setActiveMenuPostId(null);
+                        }}
+                        className="flex items-center w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-700"
+                      >
+                        <Trash2 size={14} className="mr-2" /> Delete
+                      </button>
+                      <button
+                        onClick={() => setActiveMenuPostId(null)}
+                        className="flex items-center w-full px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <ArrowLeft size={14} className="mr-2" /> Back
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <p className="text-gray-900 dark:text-white">{post.content}</p>
-                {post.imageUrl && (
-                        <img
-                          src={post.imageUrl}
-                          alt="Post"
-                          className="mt-2 w-full h-auto max-h-[500px] object-contain rounded-lg cursor-pointer hover:opacity-80 transition"
-                          onClick={() => {
-                            setSelectedImage(post.imageUrl);
-                            setShowModal(true);
-                          }}
-                        />
-                      )}
-                <div className="mt-4 flex items-center gap-6 text-gray-500 dark:text-gray-400 text-sm">
+              </div>
+
+              {editingPostId === post.id ? (
+                <div className="mt-2">
+  <textarea
+    value={editedContent}
+    onChange={(e) => setEditedContent(e.target.value)}
+    rows={3}
+    className="w-full p-2 mt-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-black text-gray-900 dark:text-white"
+  />
+<input
+  type="file"
+  accept="image/*"
+  onChange={(e) => setEditedImage(e.target.files?.[0] || null)}
+  className="mt-2"
+/>
+
+  {post.imageUrl && (
+    <img
+      src={post.imageUrl}
+      alt="Old Post"
+      className="mt-2 max-h-[200px] object-contain rounded"
+    />
+  )}
+  <div className="flex gap-2 mt-2">
+    <button
+      onClick={() => handleEditPost(post.id)}
+      className="px-4 py-2 bg-black text-white rounded hover:opacity-90 dark:bg-white dark:text-black"
+    >
+      Save
+    </button>
+    <button
+      onClick={() => setEditingPostId(null)}
+      className="px-4 py-2 border rounded text-gray-600 dark:text-gray-300"
+    >
+      Cancel
+    </button>
+  </div>
+</div>
+
+              ) : (
+                <>
+                  <p className="mt-3 text-gray-800 dark:text-white">{post.content}</p>
+                  {post.imageUrl && (
+                          <img
+                      src={post.imageUrl}
+                      alt="Post"
+                      className="mt-2 w-full h-auto max-h-[500px] object-contain rounded-lg cursor-pointer hover:opacity-80 transition"
+                      onClick={() => {
+                        setSelectedImage(post.imageUrl);
+                        setShowModal(true);
+                      }}
+                    />
+                )}
+
+              <div className="mt-4 flex items-center gap-6 text-gray-500 dark:text-gray-400 text-sm">
                 <div
                 className={`flex items-center gap-1 cursor-pointer transition ${
                   post.likes?.some((like: any) => like.userId === userId) ? 'text-gray-500' : 'text-gray-500 dark:text-gray-400'
@@ -444,7 +506,7 @@ async function handleUpdateComment(commentId: number, postId: number) {
                   </span>
                 </div>
                 </div>
-            {/* Comment Input */}
+                          {/* Comment Input */}
             <div className="mt-3">
               <input
                 type="text"
@@ -491,7 +553,7 @@ async function handleUpdateComment(commentId: number, postId: number) {
                                 </p>
                               </div>
 
-                              `{comment.author?.id === userId && (
+                              {comment.author?.id === userId && (
                                 <div className="relative self-start ml-auto">
                                   <button
                                     onClick={() =>
@@ -535,20 +597,20 @@ async function handleUpdateComment(commentId: number, postId: number) {
                                     </div>
                                   )}
                                 </div>
-                              )}`
+                              )}
                           </div>
                         ))}
                   </div>
                 )}
             </div>
+                </>
+              )}
             </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Full Image Modal */}
-      {showModal && selectedImage && (
+          ))}
+        </div>
+      )}
+                  {/* Full Image Modal */}
+                  {showModal && selectedImage && (
         <div
           className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 cursor-pointer"
           onClick={() => {
@@ -564,5 +626,6 @@ async function handleUpdateComment(commentId: number, postId: number) {
         </div>
       )}
     </div>
+    
   );
 }

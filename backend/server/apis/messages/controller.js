@@ -60,3 +60,43 @@ exports.deleteMessage = async (req, res) => {
     res.status(500).json({ error: "Failed to delete message" });
   }
 };
+
+// GET /api/messages/chat-users/:userId
+exports.getChattedUsers = async (req, res) => {
+  const userId = parseInt(req.params.userId);
+  if (!userId) return res.status(400).json({ error: 'User ID is required' });
+
+  try {
+    const sent = await prisma.message.findMany({
+      where: { senderId: userId },
+      select: { receiverId: true },
+    });
+
+    const received = await prisma.message.findMany({
+      where: { receiverId: userId },
+      select: { senderId: true },
+    });
+
+    const userIds = new Set([
+      ...sent.map((m) => m.receiverId),
+      ...received.map((m) => m.senderId),
+    ]);
+
+    const chatUsers = await prisma.user.findMany({
+      where: {
+        id: { in: Array.from(userIds) },
+      },
+      select: {
+        id: true,
+        name: true,
+        bio: true,
+        profileImage: true,
+      },
+    });
+
+    res.json({ users: chatUsers });
+  } catch (error) {
+    console.error('Error fetching chat users:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

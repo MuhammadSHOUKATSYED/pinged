@@ -125,8 +125,6 @@ const protectedRoutes = [
   "follow",
   "likes",
   "posts",
-  "replies",
-  "shares",
   "users",
   "messages",
 ];

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
 
 interface ChatRoomProps {
   currentUserId: number;
@@ -8,12 +9,14 @@ interface ChatRoomProps {
 }
 
 interface Message {
-  id: number;
+  id?: number; // Optional before saving in DB
   content: string;
   senderId: number;
   receiverId: number;
   createdAt: string;
 }
+
+let socket: Socket | null = null;
 
 export default function ChatRoom({ currentUserId, otherUserId }: ChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -23,6 +26,11 @@ export default function ChatRoom({ currentUserId, otherUserId }: ChatRoomProps) 
 
   useEffect(() => {
     fetchMessages();
+    setupSocket();
+
+    return () => {
+      socket?.disconnect();
+    };
   }, [otherUserId]);
 
   useEffect(() => {
@@ -32,14 +40,14 @@ export default function ChatRoom({ currentUserId, otherUserId }: ChatRoomProps) 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
   const fetchMessages = async () => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/messages/${otherUserId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-  
-      const data = await res.json(); // <--- not wrapped, it's already an array
+      const data = await res.json();
       setMessages(data || []);
     } catch (err) {
       console.error('Failed to fetch messages', err);
@@ -47,12 +55,44 @@ export default function ChatRoom({ currentUserId, otherUserId }: ChatRoomProps) 
       setLoading(false);
     }
   };
-  
+
+  const setupSocket = () => {
+    if (!socket) {
+      socket = io(process.env.NEXT_PUBLIC_API_BASE_URL!, {
+        transports: ['websocket'],
+      });
+
+      socket.on('connect', () => {
+        console.log('Connected to socket:', socket?.id);
+        socket?.emit('join', currentUserId);
+      });
+
+      socket.on('receiveMessage', (msg: Message) => {
+        if (
+          (msg.senderId === otherUserId && msg.receiverId === currentUserId) ||
+          (msg.senderId === currentUserId && msg.receiverId === otherUserId)
+        ) {
+          setMessages((prev) => [...prev, msg]);
+        }
+      });
+    }
+  };
 
   const sendMessage = async () => {
     const trimmed = newMessage.trim();
-    if (!trimmed) return;
+    if (!trimmed || !socket) return;
 
+    const msg: Message = {
+      content: trimmed,
+      senderId: currentUserId,
+      receiverId: otherUserId,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Emit to socket
+    socket.emit('sendMessage', msg);
+
+    // Save to DB via API (optional but recommended)
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/messages`, {
@@ -61,23 +101,16 @@ export default function ChatRoom({ currentUserId, otherUserId }: ChatRoomProps) 
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          senderId: currentUserId,
-          receiverId: otherUserId,
-          content: trimmed,
-        }),
+        body: JSON.stringify(msg),
       });
 
-      if (res.ok) {
-        const newMsg = await res.json();
-        setMessages((prev) => [...prev, newMsg]);
-        setNewMessage('');
-      } else {
-        console.error('Message send failed');
-      }
+      const savedMsg = await res.json();
+      setMessages((prev) => [...prev, savedMsg]);
     } catch (err) {
-      console.error('Error sending message', err);
+      console.error('Failed to save message to DB', err);
     }
+
+    setNewMessage('');
   };
 
   if (loading) {
@@ -88,9 +121,9 @@ export default function ChatRoom({ currentUserId, otherUserId }: ChatRoomProps) 
     <div className="max-w-xl mx-auto bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
       {/* Messages Area */}
       <div className="h-72 overflow-y-auto flex flex-col gap-3 mb-4 px-2">
-        {messages.map((msg) => (
+        {messages.map((msg, index) => (
           <div
-            key={msg.id}
+            key={index}
             className={`w-fit max-w-[75%] px-4 py-2 rounded-xl text-sm shadow-sm ${
               msg.senderId === currentUserId
                 ? 'ml-auto bg-black text-white rounded-br-none'
@@ -102,7 +135,7 @@ export default function ChatRoom({ currentUserId, otherUserId }: ChatRoomProps) 
         ))}
         <div ref={messagesEndRef} />
       </div>
-  
+
       {/* Input Area */}
       <div className="flex items-center gap-2 border-t pt-4">
         <input
@@ -121,5 +154,5 @@ export default function ChatRoom({ currentUserId, otherUserId }: ChatRoomProps) 
         </button>
       </div>
     </div>
-  );  
+  );
 }

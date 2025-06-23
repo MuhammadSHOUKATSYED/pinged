@@ -54,7 +54,7 @@ export default function CreatePostPage() {
       if (!res.ok) throw new Error(await res.text());
 
       toast.success('Post created!');
-      router.push('/myPosts'); // Redirect to my posts page
+      router.push('/dashboard/myPosts'); // Redirect to my posts page
     } catch (err: any) {
       console.error(err);
       toast.error('Failed to create post');

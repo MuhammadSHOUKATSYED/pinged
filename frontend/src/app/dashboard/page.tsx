@@ -491,7 +491,7 @@ async function handleUpdateComment(commentId: number, postId: number) {
                                 </p>
                               </div>
 
-                              `{comment.author?.id === userId && (
+                              {comment.author?.id === userId && (
                                 <div className="relative self-start ml-auto">
                                   <button
                                     onClick={() =>
@@ -535,7 +535,7 @@ async function handleUpdateComment(commentId: number, postId: number) {
                                     </div>
                                   )}
                                 </div>
-                              )}`
+                              )}
                           </div>
                         ))}
                   </div>

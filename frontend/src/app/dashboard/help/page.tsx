@@ -31,7 +31,6 @@ export default function HelpAndPrivacyPage() {
           <li><strong>Data Collection:</strong> We collect basic profile information, messages, and activity logs to operate the app.</li>
           <li><strong>Storage:</strong> Your data is securely stored and never sold to third parties.</li>
           <li><strong>Usage:</strong> Data is used solely to improve your experience and ensure app functionality.</li>
-          <li><strong>Security:</strong> All user data is encrypted both in transit and at rest.</li>
         </ul>
         <p className="mt-4">
           By using Pinged, you agree to this privacy policy. If you have any concerns, please reach out to us directly.

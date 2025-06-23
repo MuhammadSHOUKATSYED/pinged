@@ -10,11 +10,11 @@ export default function Home() {
         Pinged.
       </h1>
       <h1 className="text-3xl sm:text-4xl font-bold text-center text-gray-900 dark:text-white mb-6">
-        Ping each other with simplicity!
+        Ping each other simply!
       </h1>
 
       <p className="text-gray-600 dark:text-gray-300 mb-10 text-center max-w-md">
-        Post and chat securely in real-time. Please log in or sign up to continue.
+        Post and chat in real-time. Please log in or sign up to continue.
       </p>
 
       <div className="flex gap-4 flex-col sm:flex-row">
